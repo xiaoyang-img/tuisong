@@ -37,28 +37,58 @@ def get_weather(region):
                       'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'
     }
     key = config["weather_key"]
-    region_url = "https://geoapi.qweather.com/v2/city/lookup?location={}&key={}".format(region, key)
-    print(response.status_code, response.text[:300])
-    response = get(region_url, headers=headers).json()
-    if response["code"] == "404":
+    
+    # 使用你提供的自定义 host
+    host = "p34wcvfhpc.re.qweatherapi.com"
+    
+    # 1. 查询城市 location-id
+    region_url = "https://{}/v2/city/lookup?location={}&key={}".format(host, region, key)
+    
+    try:
+        response = get(region_url, headers=headers, timeout=15)
+        print(f"[城市查询] Status: {response.status_code}, Text: {response.text[:500]}")
+        response.raise_for_status()
+        response_json = response.json()
+    except Exception as e:
+        print(f"[城市查询] 请求失败: {e}")
+        if 'response' in dir() and response is not None:
+            print(f"[城市查询] 原始响应: {getattr(response, 'text', '无')[:500]}")
+        os.system("pause")
+        sys.exit(1)
+    
+    if response_json.get("code") == "404":
         print("推送消息失败，请检查地区名是否有误！")
         os.system("pause")
         sys.exit(1)
-    elif response["code"] == "401":
+    elif response_json.get("code") == "401":
         print("推送消息失败，请检查和风天气key是否正确！")
         os.system("pause")
         sys.exit(1)
     else:
         # 获取地区的location--id
-        location_id = response["location"][0]["id"]
-    weather_url = "https://devapi.qweather.com/v7/weather/now?location={}&key={}".format(location_id, key)
-    response = get(weather_url, headers=headers).json()
+        location_id = response_json["location"][0]["id"]
+    
+    # 2. 查询实时天气
+    weather_url = "https://{}/v7/weather/now?location={}&key={}".format(host, location_id, key)
+    
+    try:
+        response = get(weather_url, headers=headers, timeout=15)
+        print(f"[天气查询] Status: {response.status_code}, Text: {response.text[:500]}")
+        response.raise_for_status()
+        response_json = response.json()
+    except Exception as e:
+        print(f"[天气查询] 请求失败: {e}")
+        if 'response' in dir() and response is not None:
+            print(f"[天气查询] 原始响应: {getattr(response, 'text', '无')[:500]}")
+        os.system("pause")
+        sys.exit(1)
+    
     # 天气
-    weather = response["now"]["text"]
+    weather = response_json["now"]["text"]
     # 当前温度
-    temp = response["now"]["temp"] + u"\N{DEGREE SIGN}" + "C"
+    temp = response_json["now"]["temp"] + u"\N{DEGREE SIGN}" + "C"
     # 风向
-    wind_dir = response["now"]["windDir"]
+    wind_dir = response_json["now"]["windDir"]
     return weather, temp, wind_dir
  
  
