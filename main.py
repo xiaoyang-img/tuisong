@@ -34,15 +34,16 @@ def get_access_token():
 def get_weather(region):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
-                      'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'
+                      'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36',
+        # 新版 API Host 认证方式：通过 Header 传递 Key
+        'X-QW-Api-Key': config["weather_key"]
     }
     key = config["weather_key"]
-    
-    # 使用你提供的自定义 host
     host = "p34wcvfhpc.re.qweatherapi.com"
     
     # 1. 查询城市 location-id
-    region_url = "https://{}/v2/city/lookup?location={}&key={}".format(host, region, key)
+    # 新版 API Host 的城市查询路径是 /geo/v2/city/lookup
+    region_url = "https://{}/geo/v2/city/lookup?location={}".format(host, region)
     
     try:
         response = get(region_url, headers=headers, timeout=15)
@@ -53,23 +54,20 @@ def get_weather(region):
         print(f"[城市查询] 请求失败: {e}")
         if 'response' in dir() and response is not None:
             print(f"[城市查询] 原始响应: {getattr(response, 'text', '无')[:500]}")
-        os.system("pause")
         sys.exit(1)
     
     if response_json.get("code") == "404":
         print("推送消息失败，请检查地区名是否有误！")
-        os.system("pause")
         sys.exit(1)
     elif response_json.get("code") == "401":
         print("推送消息失败，请检查和风天气key是否正确！")
-        os.system("pause")
         sys.exit(1)
     else:
         # 获取地区的location--id
         location_id = response_json["location"][0]["id"]
     
     # 2. 查询实时天气
-    weather_url = "https://{}/v7/weather/now?location={}&key={}".format(host, location_id, key)
+    weather_url = "https://{}/v7/weather/now?location={}".format(host, location_id)
     
     try:
         response = get(weather_url, headers=headers, timeout=15)
@@ -80,7 +78,6 @@ def get_weather(region):
         print(f"[天气查询] 请求失败: {e}")
         if 'response' in dir() and response is not None:
             print(f"[天气查询] 原始响应: {getattr(response, 'text', '无')[:500]}")
-        os.system("pause")
         sys.exit(1)
     
     # 天气
@@ -141,8 +138,9 @@ def get_ciba():
                       'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'
     }
     r = get(url, headers=headers)
-    note_en = r.json()["content"]
-    note_ch = r.json()["note"]
+    data = r.json()
+    note_en = data["content"]
+    note_ch = data["note"]
     return note_ch, note_en
  
  
@@ -239,11 +237,9 @@ if __name__ == "__main__":
             config = eval(f.read())
     except FileNotFoundError:
         print("推送消息失败，请检查config.txt文件是否与程序位于同一路径")
-        os.system("pause")
         sys.exit(1)
     except SyntaxError:
         print("推送消息失败，请检查配置文件格式是否正确")
-        os.system("pause")
         sys.exit(1)
  
     # 获取accessToken
@@ -261,4 +257,3 @@ if __name__ == "__main__":
     # 公众号推送消息
     for user in users:
         send_message(user, accessToken, region, weather, temp, wind_dir, note_ch, note_en)
-    os.system("pause")
