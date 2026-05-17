@@ -5,15 +5,15 @@ from datetime import datetime, date
 from zhdate import ZhDate
 import sys
 import os
-
-
+ 
+ 
 def get_color():
     # 获取随机颜色
     get_colors = lambda n: list(map(lambda i: "#" + "%06x" % random.randint(0, 0xFFFFFF), range(n)))
     color_list = get_colors(100)
     return random.choice(color_list)
-
-
+ 
+ 
 def get_access_token():
     # appId
     app_id = config["app_id"]
@@ -25,67 +25,33 @@ def get_access_token():
         access_token = get(post_url).json()['access_token']
     except KeyError:
         print("获取access_token失败，请检查app_id和app_secret是否正确")
+        os.system("pause")
         sys.exit(1)
+    # print(access_token)
     return access_token
-
-
+ 
+ 
 def get_weather(region):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                       'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36'
     }
     key = config["weather_key"]
-    # 从 config 读取 API Host，替换失效的公共域名
-    api_host = config.get("api_host", "")
-    if not api_host:
-        print("请在 config.txt 中配置 api_host（和风天气控制台获取）")
-        sys.exit(1)
-
-    # GeoAPI：域名改为 api_host，路径从 v2 改为 geo/v2
-    region_url = "https://{}/geo/v2/city/lookup?location={}&key={}".format(api_host, region, key)
-    resp = get(region_url, headers=headers, timeout=10)
-
-    if resp.status_code != 200:
-        print(f"地区查询请求失败，HTTP状态码: {resp.status_code}，响应: {resp.text[:200]}")
-        sys.exit(1)
-
-    try:
-        response = resp.json()
-    except Exception:
-        print(f"地区查询返回非JSON内容: {resp.text[:200]}")
-        sys.exit(1)
-
-    if response.get("code") == "404":
+    region_url = "https://geoapi.qweather.com/v2/city/lookup?location={}&key={}".format(region, key)
+    response = get(region_url, headers=headers).json()
+    if response["code"] == "404":
         print("推送消息失败，请检查地区名是否有误！")
+        os.system("pause")
         sys.exit(1)
-    elif response.get("code") == "401":
+    elif response["code"] == "401":
         print("推送消息失败，请检查和风天气key是否正确！")
+        os.system("pause")
         sys.exit(1)
-    elif response.get("code") != "200":
-        print(f"地区查询异常，code={response.get('code')}，信息: {response}")
-        sys.exit(1)
-
-    # 获取地区的location--id
-    location_id = response["location"][0]["id"]
-
-    # 天气API：使用 api_host 域名，路径不变
-    weather_url = "https://{}/v7/weather/now?location={}&key={}".format(api_host, location_id, key)
-    resp = get(weather_url, headers=headers, timeout=10)
-
-    if resp.status_code != 200:
-        print(f"天气查询请求失败，HTTP状态码: {resp.status_code}，响应: {resp.text[:200]}")
-        sys.exit(1)
-
-    try:
-        response = resp.json()
-    except Exception:
-        print(f"天气查询返回非JSON内容: {resp.text[:200]}")
-        sys.exit(1)
-
-    if response.get("code") != "200":
-        print(f"天气查询异常，code={response.get('code')}，信息: {response}")
-        sys.exit(1)
-
+    else:
+        # 获取地区的location--id
+        location_id = response["location"][0]["id"]
+    weather_url = "https://devapi.qweather.com/v7/weather/now?location={}&key={}".format(location_id, key)
+    response = get(weather_url, headers=headers).json()
     # 天气
     weather = response["now"]["text"]
     # 当前温度
@@ -93,8 +59,8 @@ def get_weather(region):
     # 风向
     wind_dir = response["now"]["windDir"]
     return weather, temp, wind_dir
-
-
+ 
+ 
 def get_birthday(birthday, year, today):
     birthday_year = birthday.split("-")[0]
     # 判断是否为农历生日
@@ -106,12 +72,13 @@ def get_birthday(birthday, year, today):
             birthday = ZhDate(year, r_mouth, r_day).to_datetime().date()
         except TypeError:
             print("请检查生日的日子是否在今年存在")
+            os.system("pause")
             sys.exit(1)
         birthday_month = birthday.month
         birthday_day = birthday.day
         # 今年生日
         year_date = date(year, birthday_month, birthday_day)
-
+ 
     else:
         # 获取国历生日的今年对应月和日
         birthday_month = int(birthday.split("-")[1])
@@ -133,11 +100,10 @@ def get_birthday(birthday, year, today):
         birth_date = year_date
         birth_day = str(birth_date.__sub__(today)).split(" ")[0]
     return birth_day
-
-
+ 
+ 
 def get_ciba():
-    # 改为 https，避免部分环境拦截 http
-    url = "https://open.iciba.com/dsapi/"
+    url = "http://open.iciba.com/dsapi/"
     headers = {
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
@@ -147,8 +113,8 @@ def get_ciba():
     note_en = r.json()["content"]
     note_ch = r.json()["note"]
     return note_ch, note_en
-
-
+ 
+ 
 def send_message(to_user, access_token, region_name, weather, temp, wind_dir, note_ch, note_en):
     url = "https://api.weixin.qq.com/cgi-bin/message/template/send?access_token={}".format(access_token)
     week_list = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"]
@@ -234,19 +200,21 @@ def send_message(to_user, access_token, region_name, weather, temp, wind_dir, no
         print("推送消息成功")
     else:
         print(response)
-
-
+ 
+ 
 if __name__ == "__main__":
     try:
         with open("config.txt", encoding="utf-8") as f:
             config = eval(f.read())
     except FileNotFoundError:
         print("推送消息失败，请检查config.txt文件是否与程序位于同一路径")
+        os.system("pause")
         sys.exit(1)
     except SyntaxError:
         print("推送消息失败，请检查配置文件格式是否正确")
+        os.system("pause")
         sys.exit(1)
-
+ 
     # 获取accessToken
     accessToken = get_access_token()
     # 接收的用户
@@ -262,3 +230,4 @@ if __name__ == "__main__":
     # 公众号推送消息
     for user in users:
         send_message(user, accessToken, region, weather, temp, wind_dir, note_ch, note_en)
+    os.system("pause")
