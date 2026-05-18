@@ -15,9 +15,7 @@ def get_color():
  
  
 def get_access_token():
-    # appId
     app_id = config["app_id"]
-    # appSecret
     app_secret = config["app_secret"]
     post_url = ("https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid={}&secret={}"
                 .format(app_id, app_secret))
@@ -25,9 +23,8 @@ def get_access_token():
         access_token = get(post_url).json()['access_token']
     except KeyError:
         print("获取access_token失败，请检查app_id和app_secret是否正确")
-        os.system("pause")
+        # 删掉 os.system("pause")
         sys.exit(1)
-    # print(access_token)
     return access_token
  
  
@@ -91,32 +88,25 @@ def get_weather(region):
  
 def get_birthday(birthday, year, today):
     birthday_year = birthday.split("-")[0]
-    # 判断是否为农历生日
     if birthday_year[0] == "r":
         r_mouth = int(birthday.split("-")[1])
         r_day = int(birthday.split("-")[2])
-        # 获取农历生日的今年对应的月和日
         try:
             birthday = ZhDate(year, r_mouth, r_day).to_datetime().date()
         except TypeError:
             print("请检查生日的日子是否在今年存在")
-            os.system("pause")
+            # 删掉 os.system("pause")
             sys.exit(1)
         birthday_month = birthday.month
         birthday_day = birthday.day
-        # 今年生日
         year_date = date(year, birthday_month, birthday_day)
- 
     else:
-        # 获取国历生日的今年对应月和日
         birthday_month = int(birthday.split("-")[1])
         birthday_day = int(birthday.split("-")[2])
-        # 今年生日
         year_date = date(year, birthday_month, birthday_day)
-    # 计算生日年份，如果还没过，按当年减，如果过了需要+1
+    
     if today > year_date:
         if birthday_year[0] == "r":
-            # 获取农历明年生日的月和日
             r_last_birthday = ZhDate((year + 1), r_mouth, r_day).to_datetime().date()
             birth_date = date((year + 1), r_last_birthday.month, r_last_birthday.day)
         else:
