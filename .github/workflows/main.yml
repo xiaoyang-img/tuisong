@@ -1,30 +1,25 @@
 name: weixin
+
 on:
   workflow_dispatch:
-  schedule: 
-    # 代表国际标准时间23点0分，北京时间需要+8小时，代表北京时间上午8点运行
-    - cron: '0 0 * * *'
+  repository_dispatch:        # 新增：允许外部触发
+    types: [weixin-push]
+  schedule:
+    - cron: '0 0 * * *'       # 保留作为兜底
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4  # 建议也升级到 v4
-    
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v5  # 升级到 v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: '3.9'      # 去掉补丁号，使用 3.9.x 最新版
-      
-      - name: Set timezone
-        run: |
-          cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-      
-      - name: install pip packages
-        run: |
+          python-version: '3.9'
+      - run: sudo timedatectl set-timezone Asia/Shanghai
+      - run: |
           python -m pip install --upgrade pip
-          pip3 install -r requirements.txt
-      
-      - name: weixin
-        run: |
-          python3 main.py
+          pip install -r requirements.txt
+      - run: python3 main.py
